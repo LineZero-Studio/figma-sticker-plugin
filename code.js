@@ -130,10 +130,11 @@ function applyBorderStyle(root, settings) {
     opacity: clampNumber(settings.strokeOpacity, 0, 1, 1),
   };
 
-  const transparentFill = {
+  const fillBacking = settings.fillBacking !== false;
+  const fillPaint = {
     type: 'SOLID',
     color: strokePaint.color,
-    opacity: 0,
+    opacity: fillBacking ? strokePaint.opacity : 0,
   };
 
   const strokeWeight = Math.max(0.01, Number(settings.strokeWidth) || 12);
@@ -156,7 +157,7 @@ function applyBorderStyle(root, settings) {
 
     if ('fills' in node) {
       try {
-        node.fills = [transparentFill];
+        node.fills = [fillPaint];
       } catch (error) {
         // Ignore read-only fills.
       }

@@ -8,8 +8,8 @@ A Figma plugin for creating sticker-style outside borders from PNG alpha silhoue
 2. Uses the alpha channel to find the visible object.
 3. Traces the silhouette into SVG contours.
 4. Imports the SVG back into Figma.
-5. Applies an outside stroke.
-6. Groups the stroke with the original PNG/layer.
+5. Applies a filled backing and outside stroke.
+6. Groups the sticker backing with the original PNG/layer.
 
 ## Usage
 
@@ -17,6 +17,8 @@ A Figma plugin for creating sticker-style outside borders from PNG alpha silhoue
 2. Run **Figma Sticker Plugin**.
 3. Choose stroke and tracing settings.
 4. Click **Create alpha border**.
+
+The default settings fill the sticker backing and scale the traced silhouette to `0.98` around the detected object bounds. This creates a tiny overlap under the PNG to avoid visible edge gaps. Set **Silhouette scale** to `1.0` if you want an exact trace.
 
 ## Development install
 
