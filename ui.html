@@ -133,6 +133,10 @@
       <input id="strokeOpacity" type="number" min="0" max="1" step="0.05" value="1" />
     </div>
     <div class="check-row">
+      <input id="fillBacking" type="checkbox" checked />
+      <label for="fillBacking">Fill sticker backing behind PNG</label>
+    </div>
+    <div class="check-row">
       <input id="roundJoins" type="checkbox" checked />
       <label for="roundJoins">Round stroke joins</label>
     </div>
@@ -155,6 +159,10 @@
       <label for="maxDimension">Max trace dimension</label>
       <input id="maxDimension" type="number" min="64" max="4096" step="64" value="1600" />
     </div>
+    <div class="row">
+      <label for="silhouetteScale">Silhouette scale</label>
+      <input id="silhouetteScale" type="number" min="0.9" max="1.05" step="0.005" value="0.98" />
+    </div>
     <div class="check-row">
       <input id="includeHoles" type="checkbox" />
       <label for="includeHoles">Include transparent holes/cutouts as contours</label>
@@ -167,7 +175,7 @@
 
   <div class="section">
     <div id="status" data-level="info">Ready.</div>
-    <p class="hint" style="margin-top: 10px;">Tip: increase alpha threshold to ignore soft shadows/glow; lower simplify tolerance for a more exact pixel outline.</p>
+    <p class="hint" style="margin-top: 10px;">Tip: the filled backing removes edge gaps. Silhouette scale below 1.0 adds a small overlap under the PNG; set it to 1.0 for exact tracing.</p>
   </div>
 
   <script>
@@ -216,10 +224,12 @@
         strokeWidth: readNumber('strokeWidth', 12),
         strokeColor: document.getElementById('strokeColor').value || '#ffffff',
         strokeOpacity: clamp(readNumber('strokeOpacity', 1), 0, 1),
+        fillBacking: document.getElementById('fillBacking').checked,
         alphaThreshold: Math.round(clamp(readNumber('alphaThreshold', 8), 0, 255)),
         simplifyTolerance: Math.max(0, readNumber('simplifyTolerance', 1.2)),
         minArea: Math.max(0, readNumber('minArea', 4)),
         maxDimension: Math.round(clamp(readNumber('maxDimension', 1600), 64, 4096)),
+        silhouetteScale: clamp(readNumber('silhouetteScale', 0.98), 0.9, 1.05),
         includeHoles: document.getElementById('includeHoles').checked,
         roundJoins: document.getElementById('roundJoins').checked,
       };
@@ -369,9 +379,20 @@
       }
 
       const pathData = contours.map((contour) => polygonToPath(contour.points)).join(' ');
+      const pathElement = `<path d="${pathData}" fill="#000000" fill-rule="evenodd" stroke="none"/>`;
+      const silhouetteScale = clamp(Number(settings.silhouetteScale) || 1, 0.9, 1.05);
+      let silhouetteElement = pathElement;
+
+      if (Math.abs(silhouetteScale - 1) > 0.0001) {
+        const bounds = getContourBounds(contours);
+        const centerX = (bounds.minX + bounds.maxX) / 2;
+        const centerY = (bounds.minY + bounds.maxY) / 2;
+        silhouetteElement = `<g transform="translate(${formatNumber(centerX)} ${formatNumber(centerY)}) scale(${formatNumber(silhouetteScale)}) translate(${formatNumber(-centerX)} ${formatNumber(-centerY)})">${pathElement}</g>`;
+      }
+
       const svg = [
         `<svg xmlns="http://www.w3.org/2000/svg" width="${formatNumber(node.width)}" height="${formatNumber(node.height)}" viewBox="0 0 ${formatNumber(width)} ${formatNumber(height)}">`,
-        `<path d="${pathData}" fill="#000000" fill-rule="evenodd" stroke="none"/>`,
+        silhouetteElement,
         `</svg>`,
       ].join('');
 
@@ -383,6 +404,7 @@
           filledPixels,
           traceWidth: width,
           traceHeight: height,
+          silhouetteScale,
         },
       };
     }
@@ -548,6 +570,24 @@
         sum += current[0] * next[1] - next[0] * current[1];
       }
       return sum / 2;
+    }
+
+    function getContourBounds(contours) {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const contour of contours) {
+        for (const point of contour.points) {
+          minX = Math.min(minX, point[0]);
+          minY = Math.min(minY, point[1]);
+          maxX = Math.max(maxX, point[0]);
+          maxY = Math.max(maxY, point[1]);
+        }
+      }
+
+      return { minX, minY, maxX, maxY };
     }
 
     function simplifyClosedPolygon(points, tolerance) {
