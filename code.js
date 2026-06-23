@@ -67,7 +67,11 @@ async function exportSelectionForTracing(settings) {
 async function importSilhouetteAndGroup(message) {
   const nodeId = message.nodeId || (pendingRequest && pendingRequest.nodeId);
   const settings = message.settings || (pendingRequest && pendingRequest.settings) || {};
-  const original = figma.getNodeById(nodeId);
+  if (!nodeId) {
+    throw new Error('The original node is no longer available.');
+  }
+
+  const original = await figma.getNodeByIdAsync(nodeId);
 
   if (!original || !('parent' in original) || !original.parent) {
     throw new Error('The original node is no longer available.');
